@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Account Services Priority Checker</title>
+  <!-- Include Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Include Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+      .gradient-text {
+          background: linear-gradient(90deg, #3B82F6, #8B5CF6);
+          -webkit-background-clip: text;
+          background-clip: text;
+          color: transparent;
+      }
+
+      .gradient-bg {
+          background: linear-gradient(90deg, #2563EB, #7C3AED);
+      }
+
+      .task-container:hover .remove-button {
+          opacity: 1;
+      }
+
+      .remove-button {
+          opacity: 0;
+          transition: all 0.3s;
+      }
+
+      .animate-pulse {
+          animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+      }
+
+      @keyframes pulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: .5; }
+      }
+  </style>
+</head>
+<body class="min-h-screen bg-black text-gray-100 font-sans">
+  <div class="max-w-4xl mx-auto p-6 relative">
+      <div class="absolute inset-0 bg-gradient-to-r from-blue-500/10 to-purple-500/10 blur-3xl -z-10"></div>
+      
+      <!-- Header -->
+      <div class="flex justify-between items-center mb-8">
+          <h1 class="text-4xl font-bold gradient-text leading-relaxed py-2 hover:scale-105 transition-transform duration-300">
+              Account Services Priority Checker
+          </h1>
+      </div>
+
+      <!-- Team Selection -->
+      <div class="mb-6">
+          <label class="block text-gray-300 mb-2">Select Team:</label>
+          <select id="teamSelect" class="w-full p-3 rounded-lg bg-gray-800 text-gray-100 border-2 border-gray-700 focus:border-purple-500 hover:border-gray-600">
+              <option value="QA">QA Team</option>
+              <option value="UPDATES">Updates Team</option>
+              <option value="BUILD">Build Team</option>
+              <option value="ACCOUNT_SERVICES">Account Services Team</option>
+          </select>
+      </div>
+
+      <!-- Task List -->
+      <div class="space-y-6 mb-6 bg-gray-900 p-6 rounded-xl shadow-xl border border-gray-800" id="taskList">
+          <div class="flex items-center gap-4 group task-container">
+              <select class="flex-grow p-3 rounded-lg bg-gray-800 text-gray-100 border-2 border-gray-700 focus:border-purple-500 hover:border-gray-600">
+                  <!-- Options will be populated by JavaScript -->
+              </select>
+              <input type="number" min="1" value="1" 
+                  class="w-28 p-3 rounded-lg bg-gray-800 text-gray-100 border-2 border-gray-700 focus:border-purple-500 hover:border-gray-600">
+              <button class="p-2 text-gray-400 hover:text-red-400 remove-button">
+                  <i data-lucide="x"></i>
+              </button>
+          </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="flex gap-4 mb-8">
+          <button onclick="addTask()" 
+              class="flex items-center gap-2 px-6 py-3 rounded-lg bg-gray-800 text-purple-400 hover:bg-gray-700 hover:text-purple-300 transform hover:scale-105 transition-all duration-300 shadow-lg border border-gray-700">
+              <i data-lucide="plus"></i> Add Task
+          </button>
+          <button onclick="calculate()" 
+              class="flex items-center gap-2 px-6 py-3 rounded-lg gradient-bg text-white hover:opacity-90 transform hover:scale-105 transition-all duration-300 shadow-lg">
+              <i data-lucide="calculator"></i> Calculate
+          </button>
+          <button onclick="reset()" 
+              class="flex items-center gap-2 px-6 py-3 rounded-lg bg-gray-800 text-gray-300 hover:bg-gray-700 transform hover:scale-105 transition-all duration-300 shadow-lg border border-gray-700">
+              <i data-lucide="refresh-cw"></i> Reset
+          </button>
+      </div>
+
+      <!-- Results -->
+      <div id="results" class="hidden bg-gray-900 p-6 rounded-xl shadow-xl border border-gray-800">
+          <h2 class="text-2xl font-bold mb-6 gradient-text">Results</h2>
+          <div id="resultsList" class="space-y-3">
+              <!-- Results will be inserted here -->
+          </div>
+      </div>
+  </div>
+
+  <script>
+      // Initialize Lucide icons
+      lucide.createIcons();
+
+      // Define tasks by team
+      const tasksByTeam = {
+          'QA': [
+              { value: 'CSAT', label: 'CSAT' },
+              { value: 'VIP', label: 'VIP New Build Sweep' },
+              { value: 'OC_SCRIPT', label: 'OC Script' },
+              { value: 'OC_SWEEP', label: 'OC Sweep' },
+              { value: 'URGENT', label: 'Urgent IRQA' },
+              { value: 'NEW_BUILD', label: 'New Build Mapping' },
+              { value: 'FORM', label: 'Form Submission' }
+          ],
+          'UPDATES': [
+              { value: 'PURS', label: 'PURs' }
+          ],
+          'BUILD': [
+              { value: 'BUILDS', label: 'Builds' }
+          ],
+          'ACCOUNT_SERVICES': [
+              { value: 'CSAT', label: 'CSAT' },
+              { value: 'VIP', label: 'VIP New Build Sweep' },
+              { value: 'OC_SCRIPT', label: 'OC Script' },
+              { value: 'OC_SWEEP', label: 'OC Sweep' },
+              { value: 'URGENT', label: 'Urgent IRQA' },
+              { value: 'NEW_BUILD', label: 'New Build Mapping' },
+              { value: 'FORM', label: 'Form Submission' },
+              { value: 'PURS', label: 'PURs' },
+              { value: 'BUILDS', label: 'Builds' }
+          ]
+      };
+
+      function updateTaskOptions() {
+          const teamSelect = document.getElementById('teamSelect');
+          const taskSelects = document.querySelectorAll('.task-container select');
+          const selectedTeam = teamSelect.value;
+          const tasks = tasksByTeam[selectedTeam];
+
+          taskSelects.forEach(select => {
+              select.innerHTML = '';
+              tasks.forEach(task => {
+                  const option = document.createElement('option');
+                  option.value = task.value;
+                  option.textContent = task.label;
+                  select.appendChild(option);
+              });
+          });
+      }
+
+      function calculateAgentsForTask(type, count) {
+          const team = document.getElementById('teamSelect').value;
+          
+          // Account Services Team calculations
+          if (team === 'ACCOUNT_SERVICES') {
+              const accountServicesRates = {
+                  'CSAT': 5,
+                  'VIP': 2,
+                  'OC_SCRIPT': 1,
+                  'OC_SWEEP': 1,
+                  'URGENT': 1,
+                  'NEW_BUILD': 2,
+                  'FORM': 50
+              };
+
+              if (type === 'PURS') {
+                  if (count <= 10) return 2;
+                  if (count <= 20) return 4;
+                  if (count <= 30) return 5;
+                  return 7; // 30+
+              }
+
+              if (type === 'BUILDS') {
+                  if (count <= 4) return 2;
+                  if (count <= 6 && count >= 5) return 4;
+                  if (count <= 8 && count >= 7) return 5;
+                  return 5; // 8+
+              }
+
+              return Math.ceil(count / (accountServicesRates[type] || 1));
+          }
+
+          // Existing calculations for other teams
+          const qaRates = {
+              'CSAT': 5,
+              'VIP': 2,
+              'OC_SCRIPT': 1,
+              'OC_SWEEP': 1,
+              'URGENT': 1,
+              'NEW_BUILD': 2,
+              'FORM': 50
+          };
+
+          if (type === 'PURS') {
+              if (count <= 10) return 2;
+              if (count <= 20) return 4;
+              if (count <= 30) return 5;
+              return 7; // 30+
+          }
+
+          if (type === 'BUILDS') {
+              if (count <= 4) return 2;
+              if (count <= 6 && count >= 5) return 4;
+              if (count <= 8 && count >= 7) return 5;
+              return 5; // 8+
+          }
+
+          return Math.ceil(count / (qaRates[type] || 1));
+      }
+
+      function getTaskDescription(type, count) {
+          const typeNames = {
+              'CSAT': 'CSAT',
+              'VIP': 'VIP New Build Sweep',
+              'OC_SCRIPT': 'OC Script',
+              'OC_SWEEP': 'OC Sweep',
+              'URGENT': 'Urgent IRQA',
+              'NEW_BUILD': 'New Build Mapping',
+              'FORM': 'Form Submission',
+              'PURS': `PURs (${count} items)`,
+              'BUILDS': `Builds (${count} items)`
+          };
+          return typeNames[type] || type;
+      }
+
+      function addTask() {
+          const taskList = document.getElementById('taskList');
+          const newTask = taskList.children[0].cloneNode(true);
+          newTask.querySelector('input').value = 1;
+          newTask.querySelector('select').innerHTML = taskList.children[0].querySelector('select').innerHTML;
+          newTask.querySelector('select').selectedIndex = 0;
+          taskList.appendChild(newTask);
+          lucide.createIcons();
+      }
+
+      function calculate() {
+          const tasks = document.querySelectorAll('.task-container');
+          let total = 0;
+          const resultsList = document.getElementById('resultsList');
+          resultsList.innerHTML = '';
+
+          tasks.forEach(task => {
+              const type = task.querySelector('select').value;
+              const count = parseInt(task.querySelector('input').value);
+              const agents = calculateAgentsForTask(type, count);
+              total += agents;
+
+              const resultItem = document.createElement('div');
+              resultItem.className = 'flex justify-between items-center py-2 border-b border-gray-800 hover:bg-gray-800/50 transition-all duration-300 px-4 rounded-lg hover:translate-x-2';
+              resultItem.innerHTML = `
+                  <span class="text-gray-300">${getTaskDescription(type, count)}</span>
+                  <span class="text-purple-400 font-medium">${agents} agents</span>
+              `;
+              resultsList.appendChild(resultItem);
+          });
+
+          const totalElement = document.createElement('div');
+          totalElement.className = 'flex justify-between items-center py-3 px-4 bg-gray-800 rounded-lg mt-6';
+          totalElement.innerHTML = `
+              <span class="text-lg font-medium text-gray-300">Total Agents Required</span>
+              <span class="text-2xl font-bold gradient-text">${total}</span>
+          `;
+          resultsList.appendChild(totalElement);
+
+          document.getElementById('results').classList.remove('hidden');
+      }
+
+      function reset() {
+          const taskList = document.getElementById('taskList');
+          while (taskList.children.length > 1) {
+              taskList.removeChild(taskList.lastChild);
+          }
+          taskList.children[0].querySelector('input').value = 1;
+          taskList.children[0].querySelector('select').selectedIndex = 0;
+          document.getElementById('results').classList.add('hidden');
+      }
+
+      function validateInput(input, type) {
+          const value = parseInt(input.value);
+          if (type === 'BUILDS') {
+              if (value < 2) input.value = 2;
+          } else {
+              if (value < 1) input.value = 1;
+          }
+      }
+
+      // Event Listeners
+      document.addEventListener('click', function(e) {
+          if (e.target.closest('.remove-button')) {
+              const taskList = document.getElementById('taskList');
+              if (taskList.children.length > 1) {
+                  e.target.closest('.task-container').remove();
+              }
+          }
+      });
+
+      document.addEventListener('change', function(e) {
+          if (e.target.tagName === 'INPUT') {
+              const type = e.target.closest('.task-container').querySelector('select').value;
+              validateInput(e.target, type);
+          }
+      });
+
+      // Add event listener for team selection change
+      document.getElementById('teamSelect').addEventListener('change', function() {
+          updateTaskOptions();
+          reset();
+      });
+
+      // Initialize task options on page load
+      document.addEventListener('DOMContentLoaded', function() {
+          updateTaskOptions();
+      });
+  </script>
+</body>
+</html>
